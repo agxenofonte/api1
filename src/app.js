@@ -3,10 +3,18 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const port = 3000;
 
-app.use(express.json()); 
+app.use(express.json());
+
+//Midleware para verificar o dia da semana
+const checkWeekday = require('./middlewares/checkWeekday');  
+app.use(checkWeekday); 
+
+//LogMiddleware
+
+
 
 // Definir as rotas
-const itemRoutes = require('./routes/itemRoutes');
+const itemRoutes = require('./routes/bookRoutes');
 app.use('/api/items', itemRoutes); // Usar as rotas de itens
 
 // Rota de login
