@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const PDFDocument = require('pdfkit')
 
 // Mock de livros
 let livros = [
@@ -80,3 +81,31 @@ router.get('/:codigo', (req, res) => {
 });
 
 module.exports = router;
+
+// Rota GET para gerar o PDF com a lista de livros
+router.get('/pdf', (req, res) => {
+  const doc = new PDFDocument();  // Cria um novo documento PDF
+
+  // Configura os cabeçalhos para o PDF (download)
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename=livros.pdf');
+
+  // Pipe o documento para a resposta (fazendo o download)
+  doc.pipe(res);
+
+  // Adiciona o título no PDF
+  doc.fontSize(18).text('Lista de Livros', { align: 'center' });
+
+  // Adiciona os itens no PDF (livros)
+  doc.fontSize(12).moveDown();
+  livros.forEach(livro => {
+    doc.text(`Título: ${livro.titulo}`);
+    doc.text(`Autor: ${livro.autor}`);
+    doc.text(`Descrição: ${livro.descricao}`);
+    doc.text(`Resenha: ${livro.resenha}`);
+    doc.moveDown();  // Pula uma linha
+  });
+
+  // Finaliza o PDF e envia para o cliente
+  doc.end();
+});
