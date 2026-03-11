@@ -10,6 +10,7 @@ const checkWeekday = require('./middlewares/checkWeekday');
 app.use(checkWeekday); 
 
 //LogMiddleware
+app.use(logRequest); 
 
 
 
