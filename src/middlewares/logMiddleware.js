@@ -4,4 +4,9 @@ const logRequest = (req, res, next) => {
   next();  
 };
 
+logs.push({
+  url: req.originalUrl,
+  date: new Date()
+});
+
 module.exports = logRequest; 
