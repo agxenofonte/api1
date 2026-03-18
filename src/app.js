@@ -1,13 +1,14 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const logs = [];
 const PDFDocument = require('pdfkit');
 const app = express();
 const port = 3000;
 app.use(express.json());
 
 //Midleware para verificar o dia da semana
-const checkWeekday = require('./middlewares/checkWeekday');  
-app.use(checkWeekday); 
+const weekdayMiddleware = require('./middlewares/checkWeekday');  
+app.use(weekdayMiddleware); 
 
 //LogMiddleware
 app.use(logRequest); 

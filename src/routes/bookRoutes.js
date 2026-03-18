@@ -103,7 +103,7 @@ router.get('/pdf', (req, res) => {
     doc.text(`Autor: ${livro.autor}`);
     doc.text(`Descrição: ${livro.descricao}`);
     doc.text(`Resenha: ${livro.resenha}`);
-    doc.moveDown();  // Pula uma linha
+    doc.moveDown(); 
   });
 
   // Finaliza o PDF e envia para o cliente
