@@ -7,11 +7,12 @@ const port = 3000;
 app.use(express.json());
 
 //Midleware para verificar o dia da semana
-const weekdayMiddleware = require('./middlewares/checkWeekday');  
-app.use(weekdayMiddleware); 
+const checkWeekday = require('./middlewares/weekdayMiddleware');
+app.use(checkWeekday); 
 
 //LogMiddleware
-app.use(logRequest); 
+const logRequest = require('./middlewares/logMiddleware');
+app.use(logRequest);
 
 
 
