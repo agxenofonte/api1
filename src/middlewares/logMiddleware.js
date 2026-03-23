@@ -1,12 +1,16 @@
+const logs = require('../logs'); // ✅ importa o array compartilhado
+
 const logRequest = (req, res, next) => {
   const currentDate = new Date();
+
   console.log(`[${currentDate}] - Requisição feita para: ${req.originalUrl}`);
-  next();  
+
+  logs.push({           // ✅ dentro da função, roda a cada requisição
+    url: req.originalUrl,
+    date: currentDate
+  });
+
+  next();
 };
 
-logs.push({
-  url: req.originalUrl,
-  date: new Date()
-});
-
-module.exports = logRequest; 
+module.exports = logRequest;

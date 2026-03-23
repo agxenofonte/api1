@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const PDFDocument = require('pdfkit')
+const PDFDocument = require('pdfkit');
+const authMiddleware = require('../middlewares/authMiddleware');
+
+// Middleware de autenticação em todas as rotas
+router.use(authMiddleware);
+
 
 // Mock de livros
 let livros = [
@@ -51,61 +56,67 @@ let livros = [
   { codigo: 27, titulo: 'Eu Te Sinto', autor: 'Irene Cao', descricao: 'Trilogia romântica com muitas emoções.', resenha: 'No volume final da trilogia italiana, continuação de Eu te vejo e Eu te sinto, Leonardo e Elena precisam vencer as lembranças do passado para viver um grande amor. Elena perdeu tudo. Os dois homens mais importantes de sua vida. A alegria do trabalho bem-feito. O carinho e a segurança com Filippo e a paixão e o sexo arrebatador vividos com Leonardo. Seus dias são uma descida ao inferno. Nada parece ter sentido, nem mesmo o mundo da arte ao qual se dedicava tanto. Toda noite vai a boates, bebe demais e acaba saindo com um homem diferente, mas nunca encontra o prazer que sentia com Leonardo - seu corpo não reage e o desespero a domina. Em Eu te quero, a vida de Elena mudará de forma inesperada. Em uma manhã, o destino fará com que acorde ao lado de Leonardo sem entender o que está acontecendo. Entre o sonho e a realidade, ela terá de decidir mais uma vez que caminho seguir e se um futuro junto a seu amado ainda é possível. O que significa o convite tão especial do homem que não conseguiu esquecer? Ela decide se arriscar em um tudo ou nada. Mas o passado é um demônio que Leonardo não conseguiu vencer... e o último perigo pode ser fatal.' },
 ];
 
-
-//GET para listar os livros
+// GET para listar os livros
 router.get('/', (req, res) => {
-  res.json(livros);  // Retorna todos os livros
+  res.json(livros);
 });
 
-//POst para adicionar um novo livro
+// POST para adicionar um novo livro
 router.post('/', (req, res) => {
   const { codigo, titulo, autor, descricao, resenha } = req.body;
+
+  // ✅ Validação de campos obrigatórios
+  if (!codigo || !titulo || !autor) {
+    return res.status(400).json({ message: 'Campos obrigatórios: codigo, titulo e autor' });
+  }
+
   const novoLivro = { codigo, titulo, autor, descricao, resenha };
-  livros.push(novoLivro);  // Adiciona o novo livro ao array
-  res.status(201).json(novoLivro);  // Retorna o livro adicionado
+  livros.push(novoLivro);
+  res.status(201).json(novoLivro);
 });
 
-//DELETE para excluir um livro
-router.delete('/:codigo', (req, res) => {
-  const { codigo } = req.params;
-  livros = livros.filter(livro => livro.codigo !== parseInt(codigo));  // Remove o livro com o código informado
-  res.status(204).send();  // Retorna um status 204 (sem conteúdo)
-});
-
-//GET para pesquisar um livro pelo código
-router.get('/:codigo', (req, res) => {
-  const { codigo } = req.params;
-  const livro = livros.find(livro => livro.codigo === parseInt(codigo));  
-  if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
-  res.json(livro);  
-});
-
-module.exports = router;
-
-// Rota GET para gerar o PDF com a lista de livros
+// ✅ Rota /pdf ANTES de /:codigo para não ser interceptada
 router.get('/pdf', (req, res) => {
-  const doc = new PDFDocument();  // Cria um novo documento PDF
+  const doc = new PDFDocument();
 
-  // Configura os cabeçalhos para o PDF (download)
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename=livros.pdf');
 
-  // Pipe o documento para a resposta (fazendo o download)
   doc.pipe(res);
 
-  // Adiciona o título no PDF
   doc.fontSize(18).text('Lista de Livros', { align: 'center' });
-
-  // Adiciona os itens no PDF (livros)
   doc.fontSize(12).moveDown();
+
   livros.forEach(livro => {
     doc.text(`Título: ${livro.titulo}`);
     doc.text(`Autor: ${livro.autor}`);
     doc.text(`Descrição: ${livro.descricao}`);
     doc.text(`Resenha: ${livro.resenha}`);
-    doc.moveDown(); 
+    doc.moveDown();
   });
 
-  // Finaliza o PDF e envia para o cliente
   doc.end();
 });
+
+// GET para pesquisar um livro pelo código
+router.get('/:codigo', (req, res) => {
+  const codigo = parseInt(req.params.codigo);
+  const livro = livros.find(livro => livro.codigo === codigo);
+  if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
+  res.json(livro);
+});
+
+// DELETE para excluir um livro
+router.delete('/:codigo', (req, res) => {
+  const codigo = parseInt(req.params.codigo);
+
+  // ✅ Valida se o livro existe antes de deletar
+  const existe = livros.find(livro => livro.codigo === codigo);
+  if (!existe) return res.status(404).json({ message: 'Livro não encontrado' });
+
+  livros = livros.filter(livro => livro.codigo !== codigo);
+  res.status(204).send();
+});
+
+// ✅ module.exports sempre no final
+module.exports = router;
