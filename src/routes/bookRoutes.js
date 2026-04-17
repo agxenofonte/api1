@@ -1,121 +1,169 @@
 const express = require('express');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
 const router = express.Router();
 const PDFDocument = require('pdfkit');
-const authMiddleware = require('../middlewares/authMiddleware');
+const Book = require('../models/Book');
 
-// Middleware de autenticação em todas as rotas
-router.use(authMiddleware);
+const cloudinaryConfig = {};
+if (process.env.CLOUDINARY_CLOUD_NAME) cloudinaryConfig.cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
+if (process.env.CLOUDINARY_API_KEY) cloudinaryConfig.api_key = process.env.CLOUDINARY_API_KEY;
+if (process.env.CLOUDINARY_API_SECRET) cloudinaryConfig.api_secret = process.env.CLOUDINARY_API_SECRET;
+if (Object.keys(cloudinaryConfig).length > 0) {
+  cloudinary.config(cloudinaryConfig);
+}
 
+const upload = multer({ storage: multer.memoryStorage() });
 
-// Mock de livros
-let livros = [
-    // Harry Potter
-  { codigo: 1, titulo: 'Harry Potter e a Pedra Filosofal', autor: 'J.K. Rowling', descricao: 'O primeiro livro da famosa série de fantasia.', resenha: 'Harry Potter nunca havia ouvido falar de Hogwarts quando as cartas começaram a aparecer no capacho da Rua dos Alfeneiros, nº 4. Escritos a tinta verde-esmeralda em pergaminho amarelado com um lacre de cera púrpura, as cartas eram rapidamente confiscadas por seus pavorosos tio e tia. Então, no aniversário de onze anos de Harry, um gigante com olhos que luziam como besouros negros chamado Rúbeo Hagrid surge com notícias surpreendentes: Harry Potter é um bruxo e tem uma vaga na Escola de Magia e Bruxaria de Hogwarts. Uma incrível aventura está para começar! ' },
-  { codigo: 2, titulo: 'Harry Potter e a Câmara Secreta', autor: 'J.K. Rowling', descricao: 'O segundo livro da série Harry Potter, com novos mistérios e aventuras.', resenha: 'O verão de Harry Potter incluiu o pior aniversário de todos, avisos macabros de um elfo doméstico chamado Dobby, e ser resgatado dos Dursleys por seu amigo Rony Weasley em um carro voador mágico! De volta à Escola de Magia e Bruxaria de Hogwarts para seu segundo ano, Harry ouve estranhos sussurros ecoando pelos corredores vazios - e então, os ataques começam! Estudantes são encontrados transformados em pedra... As previsões sinistras de Dobby parecem estar se tornando realidade.' },
-  { codigo: 3, titulo: 'Harry Potter e o Prisioneiro de Azkaban', autor: 'J.K. Rowling', descricao: 'O terceiro livro da série, com grandes revelações e ação.', resenha: 'Quando o ônibus Nôitibus Andante surge repentinamente da escuridão e solta um guincho de seu freio bem à sua frente, mais um ano nada normal em Hogwarts começa para Harry Potter. Sirius Black, assassino em série fugitivo e seguidor do Lorde Voldemort, está à solta - e dizem que está indo atrás de Harry. Em sua primeira aula de Adivinhação, a professora Trelawney vê um agouro de morte nas folhas do chá de Harry... Mas talvez a parte mais assustadora seja os Dementadores patrulhando os pátios da escola, com seus beijos que sugam a alma...' },
-  { codigo: 4, titulo: 'Harry Potter e o Cálice de Fogo', autor: 'J.K. Rowling', descricao: 'O quarto livro, que traz o Torneio Tribruxo e um confronto mortal.', resenha: 'O Torneio Tribruxo será realizado em Hogwarts. Apenas bruxos acima dos dezessete anos de idade podem se inscrever - mas isso não impede que Harry sonhe em vencer a competição. E então, no Dia das Bruxas, quando o Cálice de Fogo faz sua seleção, Harry se surpreende ao ver que seu nome é um dos que a taça mágica escolhe. Ele terá de enfrentar tarefas mortais, dragões e bruxos das trevas, mas com a ajuda de seus melhores amigos, Ron e Hermione, talvez ele consiga sair dessa - vivo!' },
-  { codigo: 5, titulo: 'Harry Potter e a Ordem da Fênix', autor: 'J.K. Rowling', descricao: 'O quinto livro, com a crescente luta contra Voldemort.', resenha: 'Tempos sombrios se abateram sobre Hogwarts. Depois do ataque dos Dementadores ao seu primo Dudley, Harry Potter sabe que Voldemort fará tudo para encontrá-lo. Muitos negam o retorno do Lorde das Trevas, mas Harry não está sozinho: uma ordem secreta se reúne no Largo Grimmauld para fazer frente às forças sombrias. Harry precisa permitir que o professor Snape o ensine a se proteger dos vorazes ataques de Voldemort à sua mente. Mas eles estão ficando cada vez mais fortes, e o tempo de Harry está acabando...' },
-  { codigo: 6, titulo: 'Harry Potter e o Enigma do Príncipe', autor: 'J.K. Rowling', descricao: 'O sexto livro da saga, com revelações sobre o passado de Voldemort.', resenha: 'Quando Dumbledore chega à Rua dos Alfeneiros numa certa noite de verão para buscar Harry Potter, a mão com que segura a varinha está enrugada e enegrecida, mas ele não revela o motivo. Segredos e suspeitas se espalham pelo Mundo Bruxo, e a própria Hogwarts não é mais segura. Harry está convencido de que Malfoy porta a Marca Negra: há um Comensal da Morte entre eles. Harry precisará de magia poderosa e amigos verdadeiros para explorar os segredos mais sombrios de Voldemort, e Dumbledore se prepara para encarar seu destino...' },
-  { codigo: 7, titulo: 'Harry Potter e as Relíquias da Morte', autor: 'J.K. Rowling', descricao: 'O último livro da saga, com a batalha final contra Voldemort.', resenha: 'Ao subir no sidecar da moto de Hagrid e subir aos céus, deixando a Rua dos Alfeneiros pela última vez, Harry Potter sabe que o lorde Voldemort e os Comensais da Morte estão em seu encalço. O feitiço de proteção que manteve Harry seguro até o momento foi quebrado, mas ele não pode mais se esconder. O Lorde das Trevas está incutindo medo em tudo que Harry ama e, para detê-lo, Harry terá de encontrar e destruir as Horcruxes que restaram. A batalha final está para começar - Harry precisa enfrentar seu inimigo...' },
+// POST para enviar imagem do livro para a nuvem
+router.post('/:codigo/image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Arquivo de imagem obrigatório' });
+    }
 
-  // Percy Jackson
-  { codigo: 8, titulo: 'Percy Jackson e os Olimpianos: O Ladrão de Raios', autor: 'Rick Riordan', descricao: 'O autor conjuga lendas da mitologia grega com aventuras no século XXI. Nelas, os deuses do Olimpo continuam vivos, ainda se apaixonam por mortais e geram filhos metade deuses, metade humanos, como os heróis da Grécia antiga. Marcados pelo destino, eles dificilmente passam da adolescência. Poucos conseguem descobrir sua identidade.', resenha: 'O garoto-problema Percy Jackson é um deles. Tem experiências estranhas em que deuses e monstros mitológicos parecem saltar das páginas dos livros direto para a sua vida. Pior que isso: algumas dessas criaturas estão bastante irritadas. Um artefato precioso foi roubado do Monte Olimpo e Percy é o principal suspeito. Para restaurar a paz, ele e seus amigos – jovens heróis modernos – terão de fazer mais do que capturar o verdadeiro ladrão: precisam elucidar uma traição mais ameaçadora que fúria dos deuses.' },
-  { codigo: 9, titulo: 'Percy Jackson e os Olimpianos: O Mar de Monstros', autor: 'Rick Riordan', descricao: 'O segundo livro, em que Percy parte para um novo desafio.', resenha: 'Nesta aventura vibrante e divertidíssima, Percy e seus amigos partem em uma arriscada e incrível viagem pelo Mar de Monstros para salvar o acampamento. Lá, eles vão enfrentar seres fantásticos, muitos perigos e situações inusitadas. Antes, porém, nosso herói entrará em confronto com um mistério atordoante sobre sua família ― algo que o fará questionar se ser filho de Poseidon é uma honra ou uma terrível maldição.' },
-  { codigo: 10, titulo: 'Percy Jackson e os Olimpianos: A Maldição do Titã', autor: 'Rick Riordan', descricao: 'O terceiro livro, com desafios mais difíceis e perigosos.', resenha: 'Percy e seus amigos têm apenas uma semana para resgatar a deusa sequestrada e solucionar o mistério que ronda o monstro que ela caçava. Divertidíssimo e repleto de ação, o livro coloca nosso herói e seus aliados frente a frente com o maior desafio de suas vidas: a terrível profecia da maldição do titã.' },
-  { codigo: 11, titulo: 'Percy Jackson e os Olimpianos: A Batalha do Labirinto', autor: 'Rick Riordan', descricao: 'O quarto livro, com mais aventuras e grandes batalhas.', resenha: 'Neste quarto volume da série, Percy começou o ano letivo em uma nova escola. Ele já não esperava que a experiência fosse lá muito agradável, mas, ao dar de cara com líderes de torcida monstruosas e mortas de fome, conclui que tudo pode sempre ficar ainda pior.' },
-  { codigo: 12, titulo: 'Percy Jackson e os Olimpianos: O Último Olimpiano', autor: 'Rick Riordan', descricao: 'O quinto e último livro da série, com a batalha final.', resenha: 'Em O último olimpiano , o acirrado combate que pode acarretar o fim da civilização ocidental ganha as ruas de Manhattan, e Percy tem a terrível sensação de que sua luta, na verdade, é contra o próprio destino. Revelada a sinistra profecia acerca do décimo sexto aniversário do herói, ele enfim encontra seu verdadeiro caminho.' },
+    const codigo = parseInt(req.params.codigo);
+    const livro = await Book.findOne({ codigo });
+    if (!livro) {
+      return res.status(404).json({ message: 'Livro não encontrado' });
+    }
 
-  // Renegados
-  { codigo: 13, titulo: 'Renegados', autor: 'Marissa Meyer', descricao: 'Primeiro livro da série Renegados, sobre heróis e vilões.', resenha: 'Os Renegados são um grupo de prodígios humanos com habilidades extraordinárias que emergiram das ruínas de uma sociedade colapsada. Foram eles que estabeleceram a paz onde, antes, o caos reinava. Eles continuaram sendo um símbolo de esperança e coragem para todos... exceto para os vilões que foram derrotados por eles. Nova, que faz parte do grupo dos Anarquistas, tem um motivo para odiar os Renegados, e está em uma missão em busca de vingança. Enquanto se aproxima de seu alvo, ela conhece Adrian, um garoto Renegado que acredita na justiça – e em Nova. Mas a lealdade de Nova está com os Anarquistas e há um vilão que tem o poder de acabar com os dois, e em tudo que acreditam. Renegados é a nova história de Marissa Meyer, autora bestseller #1 do New York Times da série Crônicas Lunares, que explora um mundo arriscado de aventura, paixão, perigos e traições.' }, 
-  { codigo: 14, titulo: 'Arqui-inimigos', autor: 'Marissa Meyer', descricao: 'Heróis. Vilões. Vingança.E um amor proibido O tempo está se esgotando. Juntos, eles podem salvar o mundo. Mas são o pior pesadelo um do outro.', resenha: 'No segundo volume da trilogia Renegados, Nova, Adrian e o resto de seu grupo – Ruby, Oscar e Danna – se deparam com a criminalidade crescente na cidade de Gatlon enquanto armas secretas e missões conflituosas fazem Nova e Adrian questionarem não só sua crença na justiça mas também o que sentem um pelo outro.A linha entre bem e mal está cada vez mais borrada, mas o que está claro para eles é que o excesso de poder pode significar o fim da cidade e do mundo como eles conhcem.'},
-  { codigo: 15, titulo: 'Supernova', autor: 'Marissa Meyer', descricao: 'Enquanto segredos perigosos ameaçam destruir os Renegados, e aliados se transformam em arqui-inimigos, Nova e Adrian continuam tentando esconder de todos suas verdadeiras identidades.', resenha: 'Após uma batalha que deixou marcas profundas na reputação dos super-heróis e quase matou Max, uma ameaça cresce nas sombras de Gatlon.' },
-  
-  
-  // Off The Ice Series
-  { codigo: 16, titulo: 'Em Rota de Colisão', autor: 'Bal Khabra', descricao: 'Um romance esportivo hot ideal para os fãs de Quebrando o gelo', resenha: 'Summer Preston está dividida entre realizar o sonho de sua vida e se tornar uma psicóloga esportiva ou ficar o mais longe possível de um campo de hóquei, afinal, ela tem um bom motivo para odiar o esporte. Aiden Crawford é o capitão da equipe de hóquei da faculdade e está enfrentando um desafio: os erros de sua equipe ameaçam colocar em risco toda a temporada de jogos. Como punição, seu treinador o nomeia como objeto de estudo de um projeto de pesquisa estudantil e Aiden não tem escolha a não ser aceitar. Só que o projeto de pesquisa em questão é liderado por Summer, que foi praticamente obrigada pela sua orientadora a trabalhar com Aiden. Assim, um encontro explosivo acontece e os dois se vêem em uma inesperada rota de colisão ao encarar suas diferenças gritantes. Summer não suporta a abordagem blasé de Aiden em relação à vida, e Aiden não entende o jeito arisco e metódico de Summer. Mas as brigas logo se transformam em algo a mais — e quando eles baixam a guarda, não há gelo que segure o calor dos seus sentimentos.' },
-  { codigo: 17, titulo: 'No Ritmo do Jogo', autor: 'Bal Khabra', descricao: 'Um romance onde a delicadeza do balé encontra a brutalidade do hóquei — e faz nascer uma química capaz de incendiar o gelo... e o coração.', resenha: 'Elias Westbrook, de vinte e dois anos, é a mais nova contratação do time profissional de hóquei no gelo Toronto Thunder — e está lidando com uma pressão intensa da mídia, da torcida e de sua própria equipe. Por ser o novato, todas as expectativas estão sobre ele, mas marcar seu primeiro gol está sendo mais difícil do que imaginava. Sage Beaumont é uma bailarina determinada que sonha em se apresentar nos maiores palcos do mundo. Mas, para crescer na carreira, ela precisa se destacar nas redes sociais e ganhar visibilidade. Quando a proposta de um namoro de mentira com Elias aparece, ela não hesita: é a oportunidade perfeita para ambos alcançarem seus objetivos. Só que, à medida que a bailarina e o jogador passam mais tempo juntos, as regras desse acordo começam a ruir. A química entre eles é real — intensa, arrebatadora — e pode ser a chance de viverem algo muito maior do que sonharam. No ritmo do jogo é o segundo volume da série de romance esportivo adulto Off the Ice, que começou com Em rota de colisão. Uma história sobre ambição, vulnerabilidade e a força de um amor que não segue roteiro — nem no gelo, nem no palco.' },
-  { codigo: 18, titulo: 'No Compasso do Coração', autor: 'Bal Khabra', descricao: 'Um romance adulto e picante que combina uma patinadora artística e um jogador de hóquei — dois mundos opostos que colidem no rinque e provam que até o gelo pode pegar fogo', resenha: 'Sierra Romanova foi uma patinadora artística olímpica até que um acidente mudou sua vida no rinque e a deixou com ataques de pânico sempre que tenta voltar ao gelo. Agora, em seu último ano na Universidade Dalton, ela está pronta para recuperar os holofotes, com todos os olhos voltados para ela… inclusive os do jogador de hóquei Dylan Donovan, cujas palavras ousadas a instigam a calçar os patins novamente para provar que ele está errado. Depois de ser expulso do time de hóquei por seu comportamento imprudente, Dylan tem poucas chances de chegar ao draft da liga principal. Mas todo o mundo dele gira em torno do gelo — e, se o hóquei lhe for proibido, ao menos ainda existe a patinação artística. E, melhor ainda, isso significa mais tempo no rinque com Sierra. Claro, Dylan está ajudando-a a reconstruir a confiança, mas provocar seus limites no processo é um bônus muito divertido. Enquanto o mundo da patinação artística aguarda o retorno de Sierra, ela se vê precisando de um novo parceiro para competir, e a única pessoa que conhece capaz de igualar sua habilidade no gelo não é ninguém menos que o arrogante jogador de hóquei que se recusa a facilitar sua vida. Dylan é imprevisível; Sierra, uma profissional experiente. Mas, juntos, talvez eles sejam o par perfeito.' },
+    const uploadStream = () => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'books',
+            resource_type: 'image'
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
 
-  // Maple Hills Series
-  { codigo: 19, titulo: 'Quebrando o Gelo', autor: 'Hannah Grace', descricao: 'Um romance apaixonante, com uma química quente e provocações ainda mais ardentes.', resenha: 'Tudo que Anastasia Allen sempre quis foi entrar para a equipe olímpica de patinação artística, e ter conseguido uma bolsa e uma vaga no time da Universidade da Califórnia foi um passo rumo ao seu objetivo. Nada vai ficar no seu caminho — nem mesmo o capitão do time de hóquei, Nate Hawkins. O papel de Nate, como capitão, é manter seus rapazes no rinque, o que se torna difícil quando um ato de vandalismo força os atletas do hóquei a dividirem o espaço com a equipe de patinação artística — incluindo Anastasia, que claramente não vai nem um pouco com a cara dele. Mas quando o parceiro de Tasi sofre um acidente e o sonho de competir nos Jogos Olímpicos parece em risco, Nate acaba se tornando sua última esperança de fazer todos os seus sacrifícios valerem a pena.Conforme os dois se aproximam, em meio a festanças, discussões acaloradas e trocas de farpas, Anastasia percebe que talvez Nate não seja tão mau assim. Na verdade, até que ele é simpático… e bonito… e gostoso. Logo os dois estão resolvendo suas diferenças e descontando as frustrações na cama — com fogo o bastante para derreter qualquer gelo. Mas Anastasia não fica preocupada: sabe bem quais são suas prioridades, e não tem a menor chance de se apaixonar por um brutamontes do hóquei... certo?' },
-  { codigo: 20, titulo: 'No Calor do Momento', autor: 'Hannah Grace', descricao: 'Um acampamento de verão e uma química deliciosa e ardente — faíscas vão voar assim que você abrir este livro.', resenha: 'Em mais uma festa na casa dos jogadores de hóquei do campus de Maple Hills, os caminhos do atleta Russ Callaghan e da estudante Aurora Roberts se cruzam durante uma brincadeira que acaba ficando muito mais quente do que esperavam. Aurora, que sabe que noites de sexo casual têm hora para acabar (e que mantém as expectativas bem baixas em relação a homens em geral), vai embora sem se despedir e nem mesmo dizer seu nome completo ou telefone.Russ, apesar de magoado, pensa que talvez seja melhor assim: vai passar as férias trabalhando em um acampamento e a última coisa que precisa é de distrações… Isto é, até chegar lá e descobrir que uma de suas colegas de trabalho é ninguém menos que a própria Aurora. E o pior: uma das principais regras do lugar é nada de relacionamentos entre os funcionários! Ela, determinada a deixar a reputação de "encrenqueira" para trás, e ele, que precisa desse emprego mais do que nunca por conta de problemas familiares, estão em um impasse. Os dois têm muitos motivos para manter a distância, mas claramente a química entre eles segue tão forte quanto antes. Será que Russ e Aurora serão capazes de conviver somente como amigos ou acharão impossível não se deixar levar pelo calor do momento?' },
-  { codigo: 21, titulo: 'Sonhando Acordado', autor: 'Hannah Grace', descricao: 'Sonhando acordado é meu livro favorito no universo de Maple Hills. Se você ainda não tinha se apaixonado por Henry Turner... prepare-se!', resenha: 'Henry Turner já sabia que conciliar as responsabilidades como capitão do time de hóquei — que ele nem queria, para começo de conversa — e a faculdade não seria fácil. E isso foi antes de puxar uma das matérias mais difíceis do curso, com um professor casca-grossa e impossível de agradar! É aí que entra em cena Halle Jacobs, uma estudante do terceiro ano de Letras com quem Henry faz amizade ao se intrometer sem querer no clube de leitura dela.Halle sempre dá conta de tudo, não importa se tem a ver com a universidade, o emprego ou as mil e uma demandas da família. É por isso que, quando fica sabendo da dificuldade de Henry com a tal matéria, ela se oferece imediatamente para ajudar. O único problema é encontrar tempo (e inspiração) para se dedicar ao romance que está tentando escrever! Halle sente que aproveitou pouco a vida até agora e está com dificuldade de colocar no papel as experiências que nunca teve. Então os dois chegam a um acordo pouco convencional: Halle ajuda Henry a superar as dificuldades acadêmicas, e ele lhe proporciona todas as primeiras vezes que ela não teve: a primeira festa da faculdade, a primeira bebedeira, o primeiro encontro…Eles só precisam seguir algumas regrinhas. A principal delas? Não se apaixonar.' },
+        stream.end(req.file.buffer);
+      });
+    };
 
-  // Drácula
-  { codigo: 22, titulo: 'Drácula', autor: 'Bram Stoker', descricao: 'Drácula é um clássico da literatura de terror e apresenta por meio de cartas, diários e notícias os ataques do vampiro Conde Drácula a moradores de Londres e da Transilvânia. O romance epistolar marcou o gênero e, mesmo não sendo a primeira obra a retratar esse mito literário, definiu o que conhecemos hoje como vampiro, influenciando a literatura, cinema e teatro.', resenha: 'Uma das mais emblemáticas obras do terror, Drácula transcende as fronteiras do tempo. Publicado originalmente em 1897, esse romance revolucionou a figura do vampiro no imaginário popular e se tornou uma das obras mais conhecidas de todos os tempos. Aqui, o advogado Jonathan Harker viaja até a Transilvânia para tratar de negócios com o conde Drácula – figura temida pelos moradores da região. Ao longo dos acontecimentos registrados no diário de Harker, sua estadia ganha um aspecto cada vez mais assustador; e, junto a recortes de jornal, troca de cartas e telegramas, além de registros em outros diários, a obra descortina a sombria e assustadora essência dos vampiros, amplamente conhecida na modernidade. Considerado o mais bem-sucedido texto literário sobre vampiros, a obra atemporal de Bram Stoker tornou-se base para um subgênero inteiro de narrativas de horror, inspirando inclusive múltiplas adaptações em diversos idiomas para teatro, cinema e televisão.' },
+    const result = await uploadStream();
+    livro.imageUrl = result.secure_url;
+    livro.imagePublicId = result.public_id;
+    await livro.save();
 
-  // SHADA (Dr. Who)
-  { codigo: 23, titulo: 'SHADA', autor: 'Douglas Adams', descricao: 'Vista e cultuada em mais de 200 países, a série de TV "Doctor Who" é um ícone cultural britânico que conquistou mais de 70 milhões de fãs em 50 anos de aventura. O seriado acompanha o Doutor: um viajante misterioso, vindo do planeta Gallifrey, movido pelo desejo de explorar todos os cantos do tempo e do espaço. Um dos Senhores do Tempo, o Doutor é capaz de se regenerar para escapar da morte, mudando de corpo, rosto e personalidade. Com seus companheiros, humanos e alienígenas, ele protege a Terra e o cosmos contra perigos de todos os tipos.', resenha: '"Doctor Who: Shada" reconta um episódio que nunca foi transposto para as telas de televisão, uma aventura "perdida" de 1979. Escrito pelo então editor de roteiros da série, Douglas Adams, o autor de "O guia do mochileiro das galáxias", o episódio traz a quarta encarnação do Doutor e sua companheira Romana II.' },
-
-  // Verity
-  { codigo: 24, titulo: 'Verity', autor: 'Colleen Hoover', descricao: 'Um casal apaixonado. Uma intrusa. Três mentes doentias. Finalista do prêmio Goodreads como melhor romance de 2019, Verity é o primeiro thriller de Colleen Hoover e deixa os leitores envolvidos do começo ao fim.', resenha: 'Verity Crawford é a autora best-seller por trás de uma série de sucesso. Ela está no auge de sua carreira, aclamada pela crítica e pelo público, no entanto, um súbito e terrível acidente acaba interrompendo suas atividades, deixando-a sem condições de concluir a história... E é nessa complexa circunstância que surge Lowen Ashleigh, uma escritora à beira da falência convidada a escrever, sob um pseudônimo, os três livros restantes da já consolidada série. Para que consiga entender melhor o processo criativo de Verity com relação aos livros publicados e, ainda, tentar descobrir seus possíveis planos para os próximos, Lowen decide passar alguns dias na casa dos Crawford, imersa no caótico escritório de Verity - e, lá, encontra uma espécie de autobiografia onde a escritora narra os fatos acontecidos desde o dia em que conhece Jeremy, seu marido, até os instantes imediatamente anteriores a seu acidente - incluindo sua perspectiva sobre as tragédias ocorridas às filhas do casal. Quanto mais o tempo passa, mais Lowen se percebe envolvida em uma confusa rede de mentiras e segredos, e, lentamente, adquire sua própria posição no jogo psicológico que rodeia aquela casa. Emocional e fisicamente atraída por Jeremy, ela precisa decidir: expor uma versão que nem ele conhece sobre a própria esposa ou manter o sigilo dos escritos de Verity? Em Verity , Colleen Hoover se afasta do estilo que a consagrou, os romances, para se aventurar em um suspense psicológico que deixou todo o mercado editorial sem palavras de tão avassalador. Através de uma narrativa perturbadora e chocante, Verity explora o lado mais sombrio das relações humanas deixando uma surpresinha chocante no final.' },
-
-  // Trilogia Di Sensi
-  { codigo: 25, titulo: 'Eu Te Sinto', autor: 'Irene Cao', descricao: 'Trilogia romântica com muitas emoções.', resenha: 'Apesar de apaixonada pela arte e pelas cores de Veneza, cidade onde vive, a jovem restauradora Elena Volpe tem seu coração como uma tela em branco, pois nunca viveu uma grande paixão. Com 29 anos, a protagonista de Eu te vejo, tem a sua vida transformada com a chegada de Leonardo Ferrante, um famoso chef de cozinha e o mais novo inquilino do palácio onde trabalha na restauração de um afresco. O encontro com Leonardo abala suas certezas, abrindo as portas de um paraíso inexplorado. O chef sabe que o prazer é uma conquista para todos os sentidos - tem uma forma, um odor, um sabor - e guiará Elena até os limites mais doces e extremos do sexo, mas sob uma condição: nunca deverá se apaixonar por ele. A jovem aceita a proposta e deixa-se seduzir por este homem de passado misterioso, que parece fugir de seu desejo de prendê-lo a ela para sempre. Em Eu te vejo, Irene Cao revela uma trama de escrita suave, como o pincelar cuidadoso de uma restauração, e saborosa, como a gastronomia italiana. Tendo como cenário a exuberante cidade de Veneza, o primeiro volume da primeira trilogia erótica italiana traz todos os sentidos envolvidos na paixão entre Elena, uma mulher que não conhece o amor, e Leonardo, um homem que só conheceu o lado mais obscuro desse sentimento.' },
-  { codigo: 26, titulo: 'Eu Te Sinto', autor: 'Irene Cao', descricao: 'Trilogia romântica com muitas emoções.', resenha: 'Elena virou a página. Os dias de paixão e loucura com Leonardo a tornaram uma mulher mais forte, a conduziram ao lado sombrio do prazer, mas agora são apenas uma lembrança que de vez em quando atravessa seu pensamento. Hoje Elena sabe o que quer e escolheu Filippo: é por ele que deixou Veneza e se mudou para Roma. A vida deles juntos é uma perfeita harmonia, tanto na cama como fora dela. Mas apagar de vez o passado, se o destino faz de tudo para impedir isso, é impossível. Porque a história com Leonardo parece ainda não ter acabado: basta um encontro casual para reacender o fogo que, na verdade, nunca tinha apagado. É noite de seu aniversário de 30 anos, e Elena não poderia imaginar que o restaurante onde Filippo a levou para comemorar seria... o de Leonardo! Aquele olhar que toca o coração e, em seguida, um único beijo, roubado na cozinha do local, são um emocionante novo começo. Em Eu te sinto, a continuação de Eu te vejo, não há mais regras, agora as cartas estão na mesa: não é mais necessário esconder o amor e o sexo, não é mais uma mera busca do prazer em estado puro, mas um reencontro de almas que se pertencem. Até quando o segredo mais inconfessável de Leonardo vem à luz e Elena deverá decidir se está disposta a pagar o preço...' },
-  { codigo: 27, titulo: 'Eu Te Sinto', autor: 'Irene Cao', descricao: 'Trilogia romântica com muitas emoções.', resenha: 'No volume final da trilogia italiana, continuação de Eu te vejo e Eu te sinto, Leonardo e Elena precisam vencer as lembranças do passado para viver um grande amor. Elena perdeu tudo. Os dois homens mais importantes de sua vida. A alegria do trabalho bem-feito. O carinho e a segurança com Filippo e a paixão e o sexo arrebatador vividos com Leonardo. Seus dias são uma descida ao inferno. Nada parece ter sentido, nem mesmo o mundo da arte ao qual se dedicava tanto. Toda noite vai a boates, bebe demais e acaba saindo com um homem diferente, mas nunca encontra o prazer que sentia com Leonardo - seu corpo não reage e o desespero a domina. Em Eu te quero, a vida de Elena mudará de forma inesperada. Em uma manhã, o destino fará com que acorde ao lado de Leonardo sem entender o que está acontecendo. Entre o sonho e a realidade, ela terá de decidir mais uma vez que caminho seguir e se um futuro junto a seu amado ainda é possível. O que significa o convite tão especial do homem que não conseguiu esquecer? Ela decide se arriscar em um tudo ou nada. Mas o passado é um demônio que Leonardo não conseguiu vencer... e o último perigo pode ser fatal.' },
-];
+    res.json({ message: 'Imagem enviada com sucesso', imageUrl: result.secure_url });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao enviar imagem', error: error.message });
+  }
+});
 
 // GET para listar os livros
-router.get('/', (req, res) => {
-  res.json(livros);
+router.get('/', async (req, res) => {
+  try {
+    const livros = await Book.find();
+    res.json(livros);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar livros', error: error.message });
+  }
 });
 
 // POST para adicionar um novo livro
-router.post('/', (req, res) => {
-  const { codigo, titulo, autor, descricao, resenha } = req.body;
+router.post('/', async (req, res) => {
+  try {
+    const { codigo, titulo, autor, descricao, resenha, imageUrl } = req.body;
 
-  // ✅ Validação de campos obrigatórios
-  if (!codigo || !titulo || !autor) {
-    return res.status(400).json({ message: 'Campos obrigatórios: codigo, titulo e autor' });
+    // ✅ Validação de campos obrigatórios
+    if (!codigo || !titulo || !autor) {
+      return res.status(400).json({ message: 'Campos obrigatórios: codigo, titulo e autor' });
+    }
+
+    const novoLivro = new Book({ codigo, titulo, autor, descricao, resenha, imageUrl });
+    await novoLivro.save();
+    res.status(201).json(novoLivro);
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Código já existe' });
+    } else {
+      res.status(500).json({ message: 'Erro ao criar livro', error: error.message });
+    }
   }
-
-  const novoLivro = { codigo, titulo, autor, descricao, resenha };
-  livros.push(novoLivro);
-  res.status(201).json(novoLivro);
 });
 
 // ✅ Rota /pdf ANTES de /:codigo para não ser interceptada
-router.get('/pdf', (req, res) => {
-  const doc = new PDFDocument();
+router.get('/pdf', async (req, res) => {
+  try {
+    const livros = await Book.find();
+    const doc = new PDFDocument();
 
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename=livros.pdf');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=livros.pdf');
 
-  doc.pipe(res);
+    doc.pipe(res);
 
-  doc.fontSize(18).text('Lista de Livros', { align: 'center' });
-  doc.fontSize(12).moveDown();
+    doc.fontSize(18).text('Lista de Livros', { align: 'center' });
+    doc.fontSize(12).moveDown();
 
-  livros.forEach(livro => {
-    doc.text(`Título: ${livro.titulo}`);
-    doc.text(`Autor: ${livro.autor}`);
-    doc.text(`Descrição: ${livro.descricao}`);
-    doc.text(`Resenha: ${livro.resenha}`);
-    doc.moveDown();
-  });
+    livros.forEach(livro => {
+      doc.text(`Título: ${livro.titulo}`);
+      doc.text(`Autor: ${livro.autor}`);
+      doc.text(`Descrição: ${livro.descricao}`);
+      doc.text(`Resenha: ${livro.resenha}`);
+      doc.moveDown();
+    });
 
-  doc.end();
+    doc.end();
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao gerar PDF', error: error.message });
+  }
 });
 
 // GET para pesquisar um livro pelo código
-router.get('/:codigo', (req, res) => {
-  const codigo = parseInt(req.params.codigo);
-  const livro = livros.find(livro => livro.codigo === codigo);
-  if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
-  res.json(livro);
+router.get('/:codigo', async (req, res) => {
+  try {
+    const codigo = parseInt(req.params.codigo);
+    const livro = await Book.findOne({ codigo });
+    if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
+    res.json(livro);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao buscar livro', error: error.message });
+  }
+});
+
+// PUT para atualizar um livro existente
+router.put('/:codigo', async (req, res) => {
+  try {
+    const codigo = parseInt(req.params.codigo);
+    const updateData = { ...req.body };
+
+    if ('codigo' in updateData) {
+      delete updateData.codigo;
+    }
+
+    const livroAtualizado = await Book.findOneAndUpdate(
+      { codigo },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!livroAtualizado) {
+      return res.status(404).json({ message: 'Livro não encontrado' });
+    }
+
+    res.json({ message: 'Livro atualizado com sucesso', livro: livroAtualizado });
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao atualizar livro', error: error.message });
+  }
 });
 
 // DELETE para excluir um livro
-router.delete('/:codigo', (req, res) => {
-  const codigo = parseInt(req.params.codigo);
-
-  // ✅ Valida se o livro existe antes de deletar
-  const existe = livros.find(livro => livro.codigo === codigo);
-  if (!existe) return res.status(404).json({ message: 'Livro não encontrado' });
-
-  livros = livros.filter(livro => livro.codigo !== codigo);
-  res.status(204).send();
+router.delete('/:codigo', async (req, res) => {
+  try {
+    const codigo = parseInt(req.params.codigo);
+    const livro = await Book.findOneAndDelete({ codigo });
+    if (!livro) return res.status(404).json({ message: 'Livro não encontrado' });
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao excluir livro', error: error.message });
+  }
 });
 
 // ✅ module.exports sempre no final
