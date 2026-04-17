@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -12,6 +13,34 @@ mongoose.connect(mongoUri)
   .catch(err => console.log(err));
 
 app.use(express.json());
+
+// ✅ Configurar CORS - permitir apenas requisições do mesmo servidor
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Permite requisições sem origin (curl, Postman, mobile) e do mesmo servidor
+    if (!origin) {
+      callback(null, true);
+    } else {
+      // Define origem permitida (padrão: localhost ou Vercel)
+      const allowedOrigins = [
+        `http://localhost:${port}`,
+        `http://localhost:3000`,
+        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+      ].filter(Boolean);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS negado para origem: ${origin}`));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 const logs = require('./logs');
 

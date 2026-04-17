@@ -33,7 +33,11 @@ API REST para gerenciar livros com persistência em MongoDB Atlas, upload de ima
   - Middleware para criptografia automática antes de salvar
   - Método de comparação segura de senhas
 
-## Instalação e Configuração
+- **G. Configurar CORS** ✅
+  - Permite apenas requisições do mesmo servidor (localhost, Vercel)
+  - Rejeita requisições de origens não autorizadas
+  - Headers permitidos: Content-Type, Authorization
+  - Métodos permitidos: GET, POST, PUT, DELETE, OPTIONS
 
 ### 1. Instalar dependências
 ```bash
@@ -490,6 +494,50 @@ Todos os requisitos foram versionados no Git com commit `N1B`:
 ```
 git log --oneline
 e545043 N1B - Implementação de todos os requisitos
+```
+
+## CORS (Cross-Origin Resource Sharing)
+
+A API está configurada para permitir apenas requisições do **mesmo servidor** (same-origin), aumentando a segurança.
+
+### Origens Permitidas
+
+- `http://localhost:3000` (desenvolvimento local)
+- `http://localhost:<PORT>` (qualquer porta local)
+- Sem origin (requisições de curl, Postman, mobile apps)
+- URL do Vercel (quando deployado)
+
+### Origens Bloqueadas
+
+Requisições de origens diferentes serão rejeitadas com erro:
+```
+CORS negado para origem: https://exemplo.com
+```
+
+### Headers Permitidos
+
+- `Content-Type`
+- `Authorization`
+
+### Métodos Permitidos
+
+- `GET`
+- `POST`
+- `PUT`
+- `DELETE`
+- `OPTIONS`
+
+### Exemplo de Requisição Bloqueada
+
+Se uma página em `https://outro-site.com` tentar fazer requisição para a API, será bloqueada:
+
+```javascript
+// Será rejeitada pelo CORS
+fetch('http://localhost:3000/api/items', {
+  method: 'GET',
+  headers: { 'Content-Type': 'application/json' }
+  // Origin: https://outro-site.com (bloqueado)
+});
 ```
 
 ## Autor
