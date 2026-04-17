@@ -1,7 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const app = express();
-const port = process.env.PORT || 3000; // ✅ porta via variável de ambiente
+const port = process.env.PORT || 3000;
 
 const mongoose = require("mongoose");
 
@@ -45,7 +45,6 @@ app.post('/logar', (req, res) => {
 app.get('/api/requests/:date', (req, res) => {
   const { date } = req.params;
 
-  // ✅ Valida o formato da data antes de filtrar
   const formatoValido = /^\d{4}-\d{2}-\d{2}$/.test(date);
   if (!formatoValido) {
     return res.status(400).json({ message: 'Formato de data inválido. Use YYYY-MM-DD' });
