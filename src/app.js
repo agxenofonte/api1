@@ -21,6 +21,25 @@ app.use(checkWeekday);
 const logRequest = require('./middlewares/logMiddleware');
 app.use(logRequest);
 
+// ✅ Rota raiz para health check
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'API de livros funcionando',
+    version: '1.0.0',
+    endpoints: [
+      'GET /api/items',
+      'POST /api/items',
+      'GET /api/items/:codigo',
+      'PUT /api/items/:codigo',
+      'DELETE /api/items/:codigo',
+      'POST /api/items/:codigo/image',
+      'GET /api/items/pdf',
+      'POST /logar',
+      'GET /api/requests/:date'
+    ]
+  });
+});
+
 // Rotas de livros
 const itemRoutes = require('./routes/bookRoutes');
 app.use('/api/items', itemRoutes);
