@@ -62,12 +62,12 @@ app.get('/api/requests/:date', (req, res) => {
   res.json(filteredLogs);
 });
 
-// ✅ app.listen condicional para funcionar na Vercel
+// ✅ Inicia o servidor apenas em desenvolvimento local
 if (require.main === module) {
-  app.listen(port, () => {
+  app.listen(port, '0.0.0.0', () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
   });
 }
 
-// ✅ exporta o app para a Vercel conseguir usar
+// ✅ Exporta o app para Vercel usar como serverless function
 module.exports = app;
