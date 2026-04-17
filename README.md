@@ -22,6 +22,17 @@ API REST para gerenciar livros com persistência em MongoDB Atlas, upload de ima
   - Suites: `tests/bookRoutes.test.js`, `tests/middlewares.test.js`
   - Execução: `npm test`
 
+- **E. Documentar a API no README.md** ✅
+  - Documentação completa de todos os endpoints
+  - Exemplos de uso com cURL e Postman
+  - Guias de instalação e configuração
+
+- **F. Criptografar a senha do usuário** ✅
+  - Integração com bcrypt para hashing de senhas
+  - Rotas `/cadastro` e `/logar` com autenticação segura
+  - Middleware para criptografia automática antes de salvar
+  - Método de comparação segura de senhas
+
 ## Instalação e Configuração
 
 ### 1. Instalar dependências
@@ -177,10 +188,45 @@ Gera PDF com lista de livros
 
 **Resposta:** arquivo PDF (application/pdf)
 
-## Autenticação
+## Autenticação com Bcrypt
+
+As rotas de autenticação utilizam **bcrypt** para criptografar senhas de forma segura. As senhas são automaticamente hasheadas antes de serem armazenadas no MongoDB.
+
+#### POST /cadastro
+Cria uma nova conta de usuário com senha criptografada
+
+**Body (JSON):**
+```json
+{
+  "email": "usuario@exemplo.com",
+  "senha": "senha123"
+}
+```
+
+**Resposta (201 Created):**
+```json
+{
+  "message": "Usuário cadastrado com sucesso",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Resposta (400 Bad Request) — Email duplicado:**
+```json
+{
+  "message": "Email já cadastrado"
+}
+```
+
+**Resposta (400 Bad Request) — Dados inválidos:**
+```json
+{
+  "message": "Email e senha são obrigatórios"
+}
+```
 
 #### POST /logar
-Faz login e retorna JWT token
+Faz login com email e senha, retornando um JWT token
 
 **Body (JSON):**
 ```json
@@ -193,11 +239,12 @@ Faz login e retorna JWT token
 **Resposta (200 OK):**
 ```json
 {
+  "message": "Login realizado com sucesso",
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzdWFyaW9AZXhlbXBsby5jb20iLCJpYXQiOjE2MzM1NzQ4MDAsImV4cCI6MTYzMzU3ODQwMH0...."
 }
 ```
 
-**Resposta (401 Unauthorized):**
+**Resposta (401 Unauthorized) — Credenciais inválidas:**
 ```json
 {
   "message": "Credenciais inválidas"
@@ -294,6 +341,16 @@ curl -X POST http://localhost:3000/logar \
   }'
 ```
 
+### Criar nova conta
+```bash
+curl -X POST http://localhost:3000/cadastro \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "novouser@exemplo.com",
+    "senha": "senhaSegura123"
+  }'
+```
+
 ### Gerar PDF
 ```bash
 curl http://localhost:3000/api/items/pdf -o livros.pdf
@@ -372,7 +429,8 @@ api1/
 │   ├── app.js                    # Aplicação Express principal
 │   ├── logs.js                   # Array para armazenar logs
 │   ├── models/
-│   │   └── Book.js              # Schema Mongoose para livros
+│   │   ├── Book.js              # Schema Mongoose para livros
+│   │   └── User.js              # Schema Mongoose para usuários
 │   ├── routes/
 │   │   └── bookRoutes.js         # Rotas da API de livros
 │   └── middlewares/
@@ -397,6 +455,7 @@ api1/
 - **Multer** — middleware para upload de arquivos
 - **PDFKit** — gerador de PDFs
 - **JWT** — autenticação por tokens
+- **Bcrypt** — hashing e criptografia de senhas
 - **Jest** — framework de testes
 - **Supertest** — testes HTTP
 
