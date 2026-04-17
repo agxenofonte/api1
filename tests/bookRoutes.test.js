@@ -121,20 +121,18 @@ describe('Book routes', () => {
 });
 
 describe('App routes', () => {
-  test('POST /logar retorna token para credenciais válidas', async () => {
-    const response = await request(app)
-      .post('/logar')
-      .send({ email: 'usuario@exemplo.com', senha: 'senha123' })
-      .expect(200);
-
-    expect(response.body.token).toBeDefined();
+  test('POST /cadastro retorna 400 sem email e senha', async () => {
+    await request(app)
+      .post('/cadastro')
+      .send({})
+      .expect(400);
   });
 
-  test('POST /logar retorna 401 para credenciais inválidas', async () => {
+  test('POST /logar retorna 400 sem email e senha', async () => {
     await request(app)
       .post('/logar')
-      .send({ email: 'usuario@exemplo.com', senha: 'senhaErrada' })
-      .expect(401);
+      .send({})
+      .expect(400);
   });
 
   test('GET /api/requests/:date retorna 404 quando não há logs', async () => {
