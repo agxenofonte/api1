@@ -5,6 +5,7 @@ const router = express.Router();
 const PDFDocument = require('pdfkit');
 const Book = require('../models/Book');
 
+// npm testB. Salvar imagem em nuvem (talvez seja preciso usar uma nuvem auxiliar para armazenar arquivo)
 const cloudinaryConfig = {};
 if (process.env.CLOUDINARY_CLOUD_NAME) cloudinaryConfig.cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
 if (process.env.CLOUDINARY_API_KEY) cloudinaryConfig.api_key = process.env.CLOUDINARY_API_KEY;
@@ -128,6 +129,7 @@ router.get('/:codigo', async (req, res) => {
   }
 });
 
+// C. Ter rota PUT que atualiza algum dado no BD
 // PUT para atualizar um livro existente
 router.put('/:codigo', async (req, res) => {
   try {
