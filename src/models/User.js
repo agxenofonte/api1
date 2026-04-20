@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
+// F. Criptografar a senha do usuário no banco
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -14,6 +15,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 6,
+    },
+    twoFAEnabled: {
+      type: Boolean,
+      default: false, // 2FA é opcional
+    },
+    twoFAPending: {
+      type: Boolean,
+      default: false, // Indicador se há 2FA pendente de verificação
     },
   },
   { timestamps: true }

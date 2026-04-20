@@ -2,6 +2,7 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
+// D. Ter testes automatizados, usando JEST, para todas as rotas
 jest.mock('cloudinary', () => ({
   v2: {
     uploader: {
@@ -23,6 +24,9 @@ let app;
 let mongoServer;
 
 beforeAll(async () => {
+  // Mock da data para segunda-feira (dia 1) para passar no middleware weekday
+  jest.spyOn(Date.prototype, 'getDay').mockReturnValue(1);
+  
   mongoServer = await MongoMemoryServer.create();
   process.env.MONGO_URI = mongoServer.getUri();
   process.env.JWT_SECRET = 'test-secret';
@@ -137,5 +141,21 @@ describe('App routes', () => {
 
   test('GET /api/requests/:date retorna 404 quando não há logs', async () => {
     await request(app).get('/api/requests/2025-01-01').expect(404);
+  });
+
+  test('POST /api/distance calcula distância entre coordenadas', async () => {
+    const response = await request(app)
+      .post('/api/distance')
+      .send({
+        lat1: -23.5505, // São Paulo
+        lon1: -46.6333,
+        lat2: -22.9068, // Rio de Janeiro
+        lon2: -43.1729
+      })
+      .expect(200);
+
+    expect(response.body).toHaveProperty('distance');
+    expect(typeof response.body.distance).toBe('number');
+    expect(response.body.distance).toBeGreaterThan(350); // Distância aproximada em km
   });
 });

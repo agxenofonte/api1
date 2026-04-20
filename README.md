@@ -1,5 +1,6 @@
 # API de Livros - Requisitos N1B
 
+# E. Documentar a API no Readme.md
 API REST para gerenciar livros com persistência em MongoDB Atlas, upload de imagens em Cloudinary e testes automatizados com Jest.
 
 ## Requisitos Implementados
@@ -38,6 +39,11 @@ API REST para gerenciar livros com persistência em MongoDB Atlas, upload de ima
   - Rejeita requisições de origens não autorizadas
   - Headers permitidos: Content-Type, Authorization
   - Métodos permitidos: GET, POST, PUT, DELETE, OPTIONS
+
+- **I. Ter rota para calcular distância entre dois pontos em um mapa, através da informação das coordenadas geográficas** ✅
+  - Rota `POST /api/distance` usando fórmula de Haversine
+  - Recebe coordenadas latitude/longitude
+  - Retorna distância em quilômetros
 
 ### 1. Instalar dependências
 ```bash
@@ -191,6 +197,26 @@ Faz upload de imagem para Cloudinary
 Gera PDF com lista de livros
 
 **Resposta:** arquivo PDF (application/pdf)
+
+#### POST /api/distance
+Calcula a distância entre dois pontos geográficos usando coordenadas
+
+**Body (JSON):**
+```json
+{
+  "lat1": -23.5505,
+  "lon1": -46.6333,
+  "lat2": -22.9068,
+  "lon2": -43.1729
+}
+```
+
+**Resposta (200 OK):**
+```json
+{
+  "distance": 357.45
+}
+```
 
 ## Autenticação com Bcrypt
 
