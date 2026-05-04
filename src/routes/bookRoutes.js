@@ -5,7 +5,7 @@ const router = express.Router();
 const PDFDocument = require('pdfkit');
 const Book = require('../models/Book');
 
-// npm testB. Salvar imagem em nuvem (talvez seja preciso usar uma nuvem auxiliar para armazenar arquivo)
+//Salvar imagem em nuvem (talvez seja preciso usar uma nuvem auxiliar para armazenar arquivo)
 const cloudinaryConfig = {};
 if (process.env.CLOUDINARY_CLOUD_NAME) cloudinaryConfig.cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
 if (process.env.CLOUDINARY_API_KEY) cloudinaryConfig.api_key = process.env.CLOUDINARY_API_KEY;

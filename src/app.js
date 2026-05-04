@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const app = express();
@@ -46,6 +47,10 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use('/ui', express.static(path.join(__dirname, '../public')));
+app.get('/ui', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 const logs = require('./logs');
 

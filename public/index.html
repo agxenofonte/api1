@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard da API de Livros</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <span class="eyebrow">Painel interativo</span>
+        <h1>Biblioteca API</h1>
+        <p>Cadastre-se primeiro para liberar os recursos da API e gerenciar livros em tempo real.</p>
+      </div>
+      <div class="hero-card">
+        <div class="status-block">
+          <strong>Status:</strong>
+          <span id="authStatus" class="status-pill status-waiting">Aguardando cadastro</span>
+        </div>
+        <div class="auth-card" id="authCard">
+          <h2>Cadastro</h2>
+          <p>Use seu email e senha para criar acesso à API.</p>
+          <form id="registerForm" class="form-grid">
+            <label>
+              Email
+              <input type="email" id="registerEmail" placeholder="seu@email.com" required />
+            </label>
+            <label>
+              Senha
+              <input type="password" id="registerPassword" placeholder="••••••••" required minlength="6" />
+            </label>
+            <button type="submit" class="btn btn-primary">Cadastrar</button>
+          </form>
+          <div class="divider">ou</div>
+          <button id="toggleLogin" class="btn btn-secondary">Já tem conta? Fazer login</button>
+        </div>
+        <div class="feedback" id="feedback"></div>
+      </div>
+    </section>
+
+    <section class="content-panel hidden" id="mainPanel">
+      <div class="panel-header">
+        <div>
+          <h2>Recursos da API</h2>
+          <p>Escolha uma ação e experimente o backend direto do navegador.</p>
+        </div>
+        <button id="logoutButton" class="btn btn-outline">Sair</button>
+      </div>
+
+      <div class="grid-actions">
+        <button class="btn btn-card" onclick="fetchItems()">Listar livros</button>
+        <button class="btn btn-card" onclick="showBookForm('create')">Adicionar livro</button>
+        <button class="btn btn-card" onclick="showBookForm('read')">Buscar livro</button>
+        <button class="btn btn-card" onclick="showBookForm('update')">Atualizar livro</button>
+        <button class="btn btn-card" onclick="showBookForm('delete')">Excluir livro</button>
+        <button class="btn btn-card" onclick="showBookForm('upload')">Upload de imagem</button>
+        <button class="btn btn-card" onclick="openPdf()">Gerar PDF</button>
+        <button class="btn btn-card" onclick="showDistanceForm()">Calcular distância</button>
+      </div>
+
+      <section class="action-panel" id="actionPanel">
+        <div class="action-header">
+          <h3 id="actionTitle">Selecione um recurso</h3>
+          <p id="actionSubtitle">O resultado será exibido abaixo.</p>
+        </div>
+
+        <div id="actionForms" class="forms-grid"></div>
+      </section>
+
+      <section class="result-panel">
+        <h3>Resultado</h3>
+        <pre id="resultOutput">Nenhuma ação executada ainda.</pre>
+      </section>
+    </section>
+  </main>
+
+  <script src="/ui/app.js"></script>
+</body>
+</html>
